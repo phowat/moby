@@ -726,14 +726,14 @@ func releaseOSSboxResources(osSbox osl.Sandbox, ep *endpoint) {
 
 	ep.Lock()
 	joinInfo := ep.joinInfo
-	vip := ep.virtualIP
+//	vip := ep.virtualIP
 	ep.Unlock()
 
-	if len(vip) != 0 {
-		if err := osSbox.RemoveLoopbackAliasIP(&net.IPNet{IP: vip, Mask: net.CIDRMask(32, 32)}); err != nil {
-			logrus.Warnf("Remove virtual IP %v failed: %v", vip, err)
-		}
-	}
+	// if len(vip) != 0 {
+	// 	if err := osSbox.RemoveLoopbackAliasIP(&net.IPNet{IP: vip, Mask: net.CIDRMask(32, 32)}); err != nil {
+	// 		logrus.Warnf("Remove virtual IP %v failed: %v", vip, err)
+	// 	}
+	// }
 
 	if joinInfo == nil {
 		return
@@ -791,10 +791,15 @@ func (sb *sandbox) restoreOslSandbox() error {
 		if len(i.llAddrs) != 0 {
 			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().LinkLocalAddresses(i.llAddrs))
 		}
+		if len(ep.virtualIP) != 0 {
+			vipAlias := &net.IPNet{IP: ep.virtualIP, Mask: net.CIDRMask(32, 32)}
+			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().IPAliases([]*net.IPNet{vipAlias}))
+		}
 		Ifaces[fmt.Sprintf("%s+%s", i.srcName, i.dstPrefix)] = ifaceOptions
 		if joinInfo != nil {
 			routes = append(routes, joinInfo.StaticRoutes...)
 		}
+
 		if ep.needResolver() {
 			sb.startResolver(true)
 		}
@@ -838,6 +843,10 @@ func (sb *sandbox) populateNetworkResources(ep *endpoint) error {
 		if len(i.llAddrs) != 0 {
 			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().LinkLocalAddresses(i.llAddrs))
 		}
+		if len(ep.virtualIP) != 0 {
+			vipAlias := &net.IPNet{IP: ep.virtualIP, Mask: net.CIDRMask(32, 32)}
+			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().IPAliases([]*net.IPNet{vipAlias}))
+		}
 		if i.mac != nil {
 			ifaceOptions = append(ifaceOptions, sb.osSbox.InterfaceOptions().MacAddress(i.mac))
 		}
@@ -847,12 +856,12 @@ func (sb *sandbox) populateNetworkResources(ep *endpoint) error {
 		}
 	}
 
-	if len(ep.virtualIP) != 0 {
-		err := sb.osSbox.AddLoopbackAliasIP(&net.IPNet{IP: ep.virtualIP, Mask: net.CIDRMask(32, 32)})
-		if err != nil {
-			return fmt.Errorf("failed to add virtual IP %v: %v", ep.virtualIP, err)
-		}
-	}
+	// if len(ep.virtualIP) != 0 {
+	// 	err := sb.osSbox.AddLoopbackAliasIP(&net.IPNet{IP: ep.virtualIP, Mask: net.CIDRMask(32, 32)})
+	// 	if err != nil {
+	// 		return fmt.Errorf("failed to add virtual IP %v: %v", ep.virtualIP, err)
+	// 	}
+	// }
 
 	if joinInfo != nil {
 		// Set up non-interface routes.
